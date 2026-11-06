@@ -5,13 +5,11 @@ public class Task {
     public final double arrivalTime;
     public double startTime;
     public double finishTime;
+    public boolean secondPart;
+    public int bypasses;
 
     public Task(char type, double arrivalTime) {
         this.type = type;
         this.arrivalTime = arrivalTime;
-    }
-
-    public int slots() {
-        return type == 'C' ? 2 : 1;
     }
 }

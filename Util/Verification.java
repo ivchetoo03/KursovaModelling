@@ -25,19 +25,20 @@ public class Verification {
         final Scenario scenario;
         final int[] completed = new int[3];
         final double[] meanQueue = new double[3];
-        double totalQueue, utilization;
+        double totalQueue, totalWaiting, utilization;
         int maxQueue;
 
-        Result(Scenario scenario, Process process, double time) {
+        Result(Scenario scenario, Process d0, Process processor, double time) {
             this.scenario = scenario;
             for (int i = 0; i < 3; i++) {
                 char type = (char)('A' + i);
-                completed[i] = process.getCompleted(type);
-                meanQueue[i] = process.getMeanQueue(type, time);
+                completed[i] = processor.getCompleted(type);
+                meanQueue[i] = d0.getMeanQueue(type, time);
             }
-            totalQueue = process.getMeanTotalQueue(time);
-            utilization = process.getUtilization(time);
-            maxQueue = process.getMaxQueue();
+            totalQueue = d0.getMeanTotalQueue(time);
+            totalWaiting = d0.getMeanWaiting(time);
+            utilization = processor.getUtilization(time);
+            maxQueue = d0.getMaxQueue();
         }
     }
 
@@ -69,18 +70,21 @@ public class Verification {
 
     private static Result simulate(Scenario s, Strategy strategy, double time, long seed) {
         FunRand.reset(seed);
-        Process process = new Process(strategy);
+        Process d0 = new Process("D0", 1, strategy);
+        Process processor = new Process("PROCESSOR", 2, strategy);
+        d0.setNextElement(processor);
         List<Element> elements = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
             char type = (char)('A' + i);
             Create create = new Create(type, s.parameters.arrivalMean[i], s.parameters.arrivalDev[i]);
-            create.setNextElement(process);
-            process.setService(type, s.parameters.serviceMean[i], s.parameters.serviceDev[i]);
+            create.setNextElement(d0);
+            processor.setService(type, s.parameters.serviceMean[i], s.parameters.serviceDev[i]);
             elements.add(create);
         }
-        elements.add(process);
+        elements.add(d0);
+        elements.add(processor);
         new Model(elements).simulate(time, false);
-        return new Result(s, process, time);
+        return new Result(s, d0, processor, time);
     }
 
     public static void run(Strategy strategy, double time, long seed) {
@@ -104,8 +108,8 @@ public class Verification {
                 "B_PR", "B_PR_D",
                 "C_PR", "C_PR_D",
                 "Finished", "A", "B", "C",
-                "Avg queue", "A", "B", "C",
-                "Load%", "Max queue"
+                "Avg waiting", "Avg queue", "A", "B", "C",
+                "Max queue", "Load%" 
         })).append('\n');
 
         int number = 1;
@@ -123,10 +127,11 @@ public class Verification {
             int totalDone = r.completed[0] + r.completed[1] + r.completed[2];
             csv.append(';').append(totalDone);
             for (int count : r.completed) csv.append(';').append(count);
+            csv.append(';').append(number(r.totalWaiting));
             csv.append(';').append(number(r.totalQueue));
             for (double q : r.meanQueue) csv.append(';').append(number(q));
-            csv.append(';').append(number(r.utilization));
-            csv.append(';').append(r.maxQueue).append('\n');
+            csv.append(';').append(r.maxQueue);
+            csv.append(';').append(number(r.utilization)).append('\n');
         }
         return csv.toString();
     }
@@ -137,10 +142,8 @@ public class Verification {
 
     private static void saveCsv(Strategy strategy, String csv) {
         try {
-            Files.writeString(Path.of(  "verification_" + strategy + ".csv"),
+            Files.writeString(Path.of(  "results/verification_" + strategy + ".csv"),
                                         "\uFEFF" + csv, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot save", e);
-        }
+        } catch (IOException e) {}
     }
 }

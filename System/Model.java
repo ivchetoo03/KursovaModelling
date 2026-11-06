@@ -1,7 +1,6 @@
 package System;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import Elements.Create;
 import Elements.Element;
@@ -21,7 +20,7 @@ public class Model {
             for (Element element : elements) {
                 tnext = Math.min(tnext, element.getTnext());
             }
-            if (tnext > time || tnext == Double.MAX_VALUE) break;
+            if (tnext > time) break;
 
             for (Element element : elements) element.doStatistics(tnext - tcurr);
             tcurr = tnext;
@@ -42,8 +41,7 @@ public class Model {
             }
 
             if (printEvents) {
-                System.out.printf(Locale.US, "%n--- t = %.5f,  event = %s%n",
-                        tcurr, String.join(", ", events));
+                System.out.printf("\n--- t - %.5f, %s\n", tcurr, String.join(", ", events));
                 printInfo();
             }
         }

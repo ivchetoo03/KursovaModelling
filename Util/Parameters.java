@@ -1,5 +1,4 @@
 package Util;
-import java.util.Locale;
 
 public class Parameters {
     final double[] arrivalMean = {20, 20, 30};
@@ -19,6 +18,6 @@ public class Parameters {
     public String input(int i, boolean arrival) {
         double mean = arrival ? arrivalMean[i] : serviceMean[i];
         double halfWidth = arrival ? arrivalDev[i] : serviceDev[i];
-        return String.format(Locale.US, "%.0f+/-%.0f", mean, halfWidth);
+        return String.format("%.0f+/-%.0f", mean, halfWidth);
     }
 }

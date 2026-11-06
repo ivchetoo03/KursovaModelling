@@ -1,6 +1,8 @@
 package Util;
+
 public enum Strategy {
     FIFO,
-    PRIORITY_AB,
-    PRIORITY_C
+    FIRST_FIT,
+    FAIR_RESERVE,
+    BOUNDED_BYPASS
 }
