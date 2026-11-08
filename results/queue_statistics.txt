@@ -1,0 +1,3 @@
+Mean queue: 20.648980
+Std queue: 11.844580
+Max queue: 41

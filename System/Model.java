@@ -39,6 +39,9 @@ public class Model {
                     events.add(element.getName());
                 }
             }
+            for (Element element : elements) {
+                if (element instanceof Process) ((Process) element).updateRoutes();
+            }
 
             if (printEvents) {
                 System.out.printf("\n--- t - %.5f, %s\n", tcurr, String.join(", ", events));

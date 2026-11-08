@@ -64,7 +64,6 @@ public class Process extends Element {
             arrived[task.type - 'A']++;
             waiting[task.type - 'A']++;
             queue.addLast(task);
-            dispatch();
             maxQueue = Math.max(maxQueue, queue.size());
             return;
         }
@@ -90,10 +89,25 @@ public class Process extends Element {
         updateNextEvent();
     }
 
-    private boolean canAccept(Task task) {
-        int free = 0;
-        for (Task device : devices) if (device == null) free++;
-        return task.type == 'C' ? free == 2 : free >= 1;
+    private boolean blockedA(Process target) {
+        return target.devices[0] != null && target.devices[1] != null;
+    }
+
+    private boolean blockedB(Process target) {
+        return target.devices[0] != null && target.devices[1] != null;
+    }
+
+    private boolean blockedC(Process target) {
+        return target.devices[0] != null || target.devices[1] != null;
+    }
+
+    private boolean routeBlocked(Task task, Process target) {
+        switch (task.type) {
+            case 'A': return blockedA(target);
+            case 'B': return blockedB(target);
+            case 'C': return blockedC(target);
+            default: throw new IllegalArgumentException();
+        }
     }
 
     private Task chooseNext(Process target) {
@@ -103,7 +117,7 @@ public class Process extends Element {
         if (strategy == Strategy.FAIR_RESERVE && tcurr - first.arrivalTime >= 30) return first;
         if (strategy == Strategy.BOUNDED_BYPASS && first.bypasses >= 3) return first;
         for (Task task : queue) {
-            if (target.canAccept(task)) {
+            if (!routeBlocked(task, target)) {
                 if (task != first && strategy == Strategy.BOUNDED_BYPASS) first.bypasses++;
                 return task;
             }
@@ -111,25 +125,21 @@ public class Process extends Element {
         return null;
     }
 
-    private void dispatch() {
+    public void updateRoutes() {
         if (nextElement == null) return;
         Process target = (Process) nextElement;
         while (true) {
             if (d0 != null) {
-                if (target.canAccept(d0)) {
-                    Task task = d0;
-                    d0 = null;
-                    waiting[task.type - 'A']--;
-                    target.inAct(task);
-                } else {
-                    return;
-                }
+                if (routeBlocked(d0, target)) return;
+                Task task = d0;
+                d0 = null;
+                waiting[task.type - 'A']--;
+                target.inAct(task);
             }
             Task next = chooseNext(target);
             if (next == null) return;
             queue.remove(next);
             d0 = next;
-            if (!target.canAccept(d0)) return;
         }
     }
 
@@ -159,7 +169,6 @@ public class Process extends Element {
             }
         }
         updateNextEvent();
-        if (previous != null) previous.dispatch();
     }
 
     @Override

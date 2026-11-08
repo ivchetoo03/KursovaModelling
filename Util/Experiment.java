@@ -70,6 +70,32 @@ public final class Experiment {
     }
 
     public static void main(String[] args) throws IOException {
+        if (args.length > 0 && args[0].equals("load")) {
+            Files.createDirectories(Path.of("results"));
+            StringBuilder data = new StringBuilder("offered_load_percent;strategy;rep;actual_load_percent;idle_with_queue_percent;avg_waiting_tasks\n");
+            for (double factor : new double[]{2.0, 1.75, 1.5, 1.25, 1.0}) {
+                Parameters parameters = new Parameters();
+                for (int i = 0; i < 3; i++) parameters.arrivalMean[i] *= factor;
+                double offered = 50 * (parameters.serviceMean[0] / parameters.arrivalMean[0]
+                        + parameters.serviceMean[1] / parameters.arrivalMean[1]
+                        + 2 * parameters.serviceMean[2] / parameters.arrivalMean[2]);
+                for (Strategy strategy : Strategy.values()) {
+                    for (int rep = 0; rep < 20; rep++) {
+                        Run run = new Run(parameters, strategy, FIRST_SEED + SEED_STEP * rep);
+                        run.advance(5000);
+                        double[] before = run.snapshot();
+                        run.advance(30000);
+                        double[] after = run.snapshot();
+                        data.append(offered).append(';').append(strategy).append(';').append(rep + 1)
+                                .append(';').append(100 * (after[6] - before[6]) / 50000)
+                                .append(';').append(100 * (after[7] - before[7]) / 25000)
+                                .append(';').append((after[1] - before[1]) / 25000).append('\n');
+                    }
+                }
+            }
+            write(Path.of("results/load_study.csv"), data);
+            return;
+        }
         Path dir = Path.of("results");
         Files.createDirectories(dir);
         double[] times = {1000, 3000, 5000, 10000, 20000, 30000};

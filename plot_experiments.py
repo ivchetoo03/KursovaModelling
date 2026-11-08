@@ -105,16 +105,8 @@ def plot_comparison(summary):
 def plot_sample():
     states = pd.read_csv(FOLDER / "queue_states.csv", sep=";")
     tasks = pd.read_csv(FOLDER / "tasks.csv", sep=";")
-
-    for col in ["time_min", "duration_min"]:
-        states[col] = pd.to_numeric(
-            states[col].astype(str).str.replace(",", ".", regex=False)
-        )
-
-    for col in ["wait_min", "service_min", "system_min"]:
-        tasks[col] = pd.to_numeric(
-            tasks[col].astype(str).str.replace(",", ".", regex=False)
-        )
+    states["duration_min"] = states["duration_min"].astype(str).str.replace(",", ".").astype(float)
+    tasks[["wait_min", "service_min", "system_min"]] = tasks[["wait_min", "service_min", "system_min"]].replace(",", ".", regex=True).astype(float)
     plt.figure(figsize=(8, 5))
     bins = np.arange(states.queue.max() + 2) - 0.5
     plt.hist(states.queue, bins=bins, weights=states.duration_min / states.duration_min.sum())
@@ -136,6 +128,20 @@ def plot_sample():
         file.write(f"Mean queue: {mean:.6f}\nStd queue: {sd:.6f}\nMax queue: {states.queue.max()}\n")
 
 
+def plot_load_study():
+    data = pd.read_csv(FOLDER / "load_study.csv", sep=";")
+    means = data.groupby(["offered_load_percent", "strategy"])["actual_load_percent"].mean()
+    plt.figure(figsize=(9, 5))
+    for i, (strategy, label) in enumerate(zip(STRATEGIES, LABELS)):
+        values = means.xs(strategy, level="strategy").sort_index()
+        plt.plot(values.index, values.values, linestyle=(0, (5+i, 10+i)), label=label)
+    plt.xlabel("Запропоноване навантаження, %")
+    plt.ylabel("Фактичне завантаження пристроїв, %")
+    plt.ylim(0, 105)
+    plt.legend()
+    save("load_study.png")
+
+
 def main():
     pilot = pd.read_csv(FOLDER / "pilot.csv", sep=";", encoding="utf-8-sig", decimal=",")
     runs = pd.read_csv(FOLDER / "replications.csv", sep=";", encoding="utf-8-sig", decimal=",")
@@ -143,6 +149,8 @@ def main():
     plot_pilot(pilot, "BASE", "overload_growth.png")
     plot_pilot(pilot, "REDUCED", "stable_convergence.png")
     plot_comparison(summary)
+    if (FOLDER / "load_study.csv").exists():
+        plot_load_study()
     if (FOLDER / "queue_states.csv").exists() and (FOLDER / "tasks.csv").exists():
         plot_sample()
     print(summary.to_string(index=False))
