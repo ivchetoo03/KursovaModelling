@@ -23,7 +23,7 @@ public final class Experiment {
 
         Run(Parameters parameters, Strategy strategy, long seed) {
             FunRand.reset(seed);
-            d0 = new Process("D0", 1, strategy);
+            d0 = new Process("D0", 1, strategy, (type, busy) -> type == 'C' ? busy > 0 : busy == 2);
             processor = new Process("PROCESSOR", 2, strategy);
             d0.setNextElement(processor);
             List<Element> elements = new ArrayList<>();
@@ -71,6 +71,9 @@ public final class Experiment {
 
     public static void main(String[] args) throws IOException {
         if (args.length > 0 && args[0].equals("load")) {
+            double warmup = 5000;
+            double end = 30000;
+            double duration = end - warmup;
             Files.createDirectories(Path.of("results"));
             StringBuilder data = new StringBuilder("offered_load_percent;strategy;rep;actual_load_percent;idle_with_queue_percent;avg_waiting_tasks\n");
             for (double factor : new double[]{2.0, 1.75, 1.5, 1.25, 1.0}) {
@@ -82,14 +85,15 @@ public final class Experiment {
                 for (Strategy strategy : Strategy.values()) {
                     for (int rep = 0; rep < 20; rep++) {
                         Run run = new Run(parameters, strategy, FIRST_SEED + SEED_STEP * rep);
-                        run.advance(5000);
+                        run.advance(warmup);
                         double[] before = run.snapshot();
-                        run.advance(30000);
+                        run.advance(end);
                         double[] after = run.snapshot();
                         data.append(offered).append(';').append(strategy).append(';').append(rep + 1)
-                                .append(';').append(100 * (after[6] - before[6]) / 50000)
-                                .append(';').append(100 * (after[7] - before[7]) / 25000)
-                                .append(';').append((after[1] - before[1]) / 25000).append('\n');
+                            .append(';').append(100 * (after[6] - before[6]) / (2 * duration))
+                            .append(';').append(100 * (after[7] - before[7]) / duration)
+                            .append(';').append((after[1] - before[1]) / duration).append('\n');
+
                     }
                 }
             }
@@ -126,16 +130,18 @@ public final class Experiment {
                     double[] after = run.snapshot();
                     double duration = end - warmup;
                     double[] difference = new double[after.length];
-                    for (int i = 0; i < difference.length; i++) difference[i] = after[i] - before[i];
+                    for (int i = 0; i < difference.length; i++) {
+                        difference[i] = after[i] - before[i];
+                        if (i < 8 || i > 10) difference[i] /= duration;}
                     double completed = difference[8] + difference[9] + difference[10];
                     data.append(String.format(
                             "%s;%s;%d;%d;%.0f;%.0f;%.0f;%.6f;%.6f;%.6f;%.6f;%.6f;%.6f;%.6f;%.6f;%.6f;%.6f;%.6f;%.6f;%.0f;%.0f;%.0f;%.0f%n",
                             scenario, strategy, rep + 1, seed, warmup, end, duration,
-                            difference[0] / duration, difference[1] / duration,
-                            difference[2] / duration, difference[3] / duration, difference[4] / duration,
-                            difference[11] / duration, difference[12] / duration, difference[13] / duration,
-                            100 * difference[5] / duration, 100 * difference[6] / (2 * duration),
-                            100 * difference[7] / duration, completed / duration, completed,
+                            difference[0], difference[1],
+                            difference[2], difference[3], difference[4],
+                            difference[11], difference[12], difference[13],
+                            100 * difference[5], 50 * difference[6],
+                            100 * difference[7], completed / duration, completed,
                             difference[8], difference[9], difference[10]));
                 }
             }

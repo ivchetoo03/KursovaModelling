@@ -20,7 +20,7 @@ public class Main {
         Create a = new Create('A', 20, 5);
         Create b = new Create('B', 20, 10);
         Create c = new Create('C', 30, 10);
-        Process d0 = new Process("D0", 1, strategy);
+        Process d0 = new Process("D0", 1, strategy, (type, busy) -> type == 'C' ? busy > 0 : busy == 2);
         Process processor = new Process("PROCESSOR", 2, strategy);
         d0.setNextElement(processor);
         a.setNextElement(d0);

@@ -17,7 +17,6 @@ def save(name):
     plt.savefig(FOLDER / name)
     plt.close()
 
-
 def analyze(data):
     grouped = data.groupby(["scenario", "strategy"])
     summary = grouped.agg(
@@ -57,20 +56,29 @@ def analyze(data):
     pd.DataFrame(comparisons).to_csv(FOLDER / "paired_comparisons.csv", sep=";", index=False, float_format="%.6f")
     return summary
 
-
 def plot_pilot(pilot, scenario, filename):
     data = pilot[pilot.scenario == scenario]
-    plt.figure(figsize=(9, 5))
+    fig, axes = plt.subplots(2, 1, figsize=(10, 6.7), sharex=True)
     for i, (strategy, label) in enumerate(zip(STRATEGIES, LABELS)):
-        rows = data[data["strategy"] == strategy].groupby("time_min")["cum_avg_waiting_tasks"].mean()
-        plt.plot(rows.index, rows.values, linestyle=(0, (5+i, 10+i)), label=label)
-    if scenario == "REDUCED":
-        plt.axvline(5000, linestyle="--", color="gray")
-    plt.xlabel("Модельний час, хв")
-    plt.ylabel("Середня кількість в очікуванні (Q + D0)")
-    plt.legend()
-    save(filename)
-
+        rows = data[data["strategy"] == strategy].groupby("time_min").mean(numeric_only=True)
+        style = (0, (5 + i, 10 + i))
+        axes[0].plot(rows.index, rows["cum_avg_waiting_tasks"],
+                     linestyle=style, marker="o", markersize=3, label=label)
+        axes[1].plot(rows.index, rows["cum_load_percent"],
+                     linestyle=style, marker="o", markersize=3, label=label)
+    axes[0].set_ylabel("Середня кількість в очікуванні (Q + D0)")
+    axes[1].set_ylabel("Фактичне завантаження, %")
+    axes[1].set_xlabel("Модельний час, хв")
+    for ax in axes:
+        ax.grid(axis="y", alpha=0.2)
+        if scenario == "REDUCED":
+            ax.axvline(5000, linestyle="--", color="gray", linewidth=1)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 1.01),
+               ncol=4, frameon=False)
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    fig.savefig(FOLDER / filename, bbox_inches="tight")
+    plt.close(fig)
 
 def plot_comparison(summary):
     rows = summary.set_index(["scenario", "strategy"])
@@ -101,7 +109,6 @@ def plot_comparison(summary):
     plt.legend()
     save("utilization.png")
 
-
 def plot_sample():
     states = pd.read_csv(FOLDER / "queue_states.csv", sep=";")
     tasks = pd.read_csv(FOLDER / "tasks.csv", sep=";")
@@ -127,7 +134,6 @@ def plot_sample():
     with open(FOLDER / "queue_statistics.txt", "w", encoding="utf-8") as file:
         file.write(f"Mean queue: {mean:.6f}\nStd queue: {sd:.6f}\nMax queue: {states.queue.max()}\n")
 
-
 def plot_load_study():
     data = pd.read_csv(FOLDER / "load_study.csv", sep=";")
     means = data.groupby(["offered_load_percent", "strategy"])["actual_load_percent"].mean()
@@ -140,7 +146,6 @@ def plot_load_study():
     plt.ylim(0, 105)
     plt.legend()
     save("load_study.png")
-
 
 def main():
     pilot = pd.read_csv(FOLDER / "pilot.csv", sep=";", encoding="utf-8-sig", decimal=",")
@@ -155,7 +160,6 @@ def main():
         plot_sample()
     print(summary.to_string(index=False))
     print(pd.read_csv(FOLDER / "anova.csv", sep=";").to_string(index=False))
-
 
 if __name__ == "__main__":
     main()

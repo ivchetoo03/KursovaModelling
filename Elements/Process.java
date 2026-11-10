@@ -3,6 +3,7 @@ package Elements;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.function.BiPredicate;
 
 import System.Task;
 import Util.FunRand;
@@ -12,6 +13,7 @@ public class Process extends Element {
     private final Deque<Task> queue = new ArrayDeque<>();
     private final Task[] devices;
     private final Strategy strategy;
+    private final BiPredicate<Character, Integer> blockedRoute;
     private Process previous;
     private Task d0;
     private PrintWriter queueTrace;
@@ -31,9 +33,14 @@ public class Process extends Element {
     private int maxQueue;
 
     public Process(String name, int channels, Strategy strategy) {
+        this(name, channels, strategy, (type, busy) -> false);
+    }
+
+    public Process(String name, int channels, Strategy strategy, BiPredicate<Character, Integer> blockedRoute) {
         super(name);
         devices = new Task[channels];
         this.strategy = strategy;
+        this.blockedRoute = blockedRoute;
     }
 
     @Override
@@ -89,25 +96,12 @@ public class Process extends Element {
         updateNextEvent();
     }
 
-    private boolean blockedA(Process target) {
-        return target.devices[0] != null && target.devices[1] != null;
-    }
-
-    private boolean blockedB(Process target) {
-        return target.devices[0] != null && target.devices[1] != null;
-    }
-
-    private boolean blockedC(Process target) {
-        return target.devices[0] != null || target.devices[1] != null;
-    }
-
     private boolean routeBlocked(Task task, Process target) {
-        switch (task.type) {
-            case 'A': return blockedA(target);
-            case 'B': return blockedB(target);
-            case 'C': return blockedC(target);
-            default: throw new IllegalArgumentException();
+        int busy = 0;
+        for (Task device : target.devices) {
+            if (device != null) busy++;
         }
+        return blockedRoute.test(task.type, busy);
     }
 
     private Task chooseNext(Process target) {

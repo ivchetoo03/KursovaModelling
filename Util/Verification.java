@@ -70,7 +70,7 @@ public class Verification {
 
     private static Result simulate(Scenario s, Strategy strategy, double time, long seed) {
         FunRand.reset(seed);
-        Process d0 = new Process("D0", 1, strategy);
+        Process d0 = new Process("D0", 1, strategy, (type, busy) -> type == 'C' ? busy > 0 : busy == 2);
         Process processor = new Process("PROCESSOR", 2, strategy);
         d0.setNextElement(processor);
         List<Element> elements = new ArrayList<>();
